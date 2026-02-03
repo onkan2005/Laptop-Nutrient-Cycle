@@ -316,8 +316,11 @@
       border-radius: 999px;
       background: rgba(191, 219, 254, 0.55);
       border: 1px solid rgba(59, 130, 246, 0.5);
-      display: inline-block;
-      min-width: 60%;
+      display: block;
+      width: fit-content;
+      max-width: 92%;
+      margin-left: auto;
+      margin-right: auto;
       box-shadow: 0 10px 24px rgba(15, 23, 42, 0.22);
       animation: pulseLog 3s ease-in-out infinite;
     }
@@ -423,13 +426,11 @@
 
     <div class="panel-section hidden" id="promptBox">
       <p id="promptText"></p>
-      <button id="sendBtn">Send Components Now</button>
+      <button id="sendBtn">Next</button>
     </div>
 
     <div class="panel-section">
       <h3>Outputs</h3>
-      <p>Brand New Laptop → Stores → Users</p>
-      <p>Refurbished Laptop → Stores → Users</p>
     </div>
 
     <div id="log">Click the Mining image to start.</div>
@@ -481,7 +482,7 @@
     const isRefurbished = Math.random() < 0.5;
     userLaptop.src = isRefurbished ? "images/refurbishedlaptop.jpg" : "images/brandnewlaptop.jpg";
 
-    log.textContent = `Manufacturer produced a brand new laptop. It appears in Laptop Output and one ${isRefurbished ? 'refurbished' : 'brand new'} laptop is taken by a user. When the user's laptop breaks, drag it to the Recycling / Junk Shop.`;
+    log.textContent = `The manufacturer produces a brand-new laptop. It appears in the Laptop Output and is sent to the shop to be sold. The user buys it. When the laptop breaks, drag it to the Recycling / Junk Shop.`;
   });
 
   // Drag start (the user's laptop is what moves)
@@ -547,19 +548,55 @@
       componentPairsDiv.appendChild(pairDiv);
     });
 
-    promptText.textContent = "Inside the recycling / junk shop: broken components are dissolved for metal, while good components are repaired and reused in refurbished laptops.";
+    promptText.textContent = "Inside the recycling / junk shop: broken components are dissolved for metal, while good components are reused in refurbished laptops.";
     promptBox.classList.remove("hidden");
-    log.textContent = "Click 'Send Components Now' to continue.";
   });
 
-  // Send components button
+  // State for two-step flow (send components, then reveal laptops)
+  let awaitingReveal = false;
+
+  // Next button: first click sends components, second click reveals laptops
   sendBtn.addEventListener("click", () => {
-    promptBox.classList.add("hidden");
-    log.textContent = "Sending dissolved metals and repaired components back to the manufacturer...";
-    animateComponents();
+    if (!awaitingReveal) {
+      // First click: send components back to manufacturer
+      promptBox.classList.add("hidden");
+      log.textContent = "Sending dissolved metals and repaired components back to the manufacturer...";
+      animateComponents(() => {
+        // After animation finishes, highlight stations and ask user to click Next
+        recycleBin.classList.add("area-highlight-green");
+        factoryArea.classList.add("area-highlight-green");
+        document.getElementById("outputArea").classList.add("area-highlight-blue");
+
+        promptText.textContent = "Metals and repaired parts are now at the manufacturer. Click Next to see the new laptops they create.";
+        sendBtn.textContent = "Next";
+        promptBox.classList.remove("hidden");
+        log.textContent = "Click Next to reveal the brand new and refurbished laptops.";
+
+        awaitingReveal = true;
+      });
+    } else {
+      // Second click: reveal brand new + refurbished outputs and user's new laptop
+      awaitingReveal = false;
+      promptBox.classList.add("hidden");
+
+      newLaptop.style.display = "block";
+      refLaptop.style.display = "block";
+      userLaptop.style.display = "block";
+      // Randomly show brand new or refurbished laptop for the user
+      const isRefurbished = Math.random() < 0.5;
+      userLaptop.src = isRefurbished ? "images/refurbishedlaptop.jpg" : "images/brandnewlaptop.jpg";
+
+      recycleBin.classList.remove("area-highlight-green");
+      factoryArea.classList.remove("area-highlight-green");
+      document.getElementById("outputArea").classList.remove("area-highlight-blue");
+      log.textContent = "Manufacturer used recycled metals and repaired components from the recycling / junk shop to build a brand new laptop and a refurbished laptop.";
+
+      // Reset button label for the next cycle
+      sendBtn.textContent = "Next";
+    }
   });
 
-  function animateComponents() {
+  function animateComponents(onComplete) {
     const pairs = Array.from(document.getElementsByClassName("component-pair"));
 
     if (!pairs.length) {
@@ -591,32 +628,15 @@
       chosenImg.style.opacity = "0";
     });
 
-    // Wait for the last staggered animation to finish
+    // Wait for the last staggered animation to finish, then notify caller
     const travelDuration = 1500 + pairs.length * 80; // ms
 
     setTimeout(() => {
-      // Clear right‑side components, then visually highlight where materials are going next
       componentPairsDiv.innerHTML = "";
 
-      // Highlight recycling + manufacturer for a moment to show materials flowing back to manufacturing
-      recycleBin.classList.add("area-highlight-green");
-      factoryArea.classList.add("area-highlight-green");
-      document.getElementById("outputArea").classList.add("area-highlight-blue");
-
-      log.textContent = "Inside the recycling / junk shop, metals and repaired parts are sent back to the manufacturer to create new and refurbished laptops.";
-
-      setTimeout(() => {
-        newLaptop.style.display = "block";
-        refLaptop.style.display = "block";
-        userLaptop.style.display = "block";
-        // Randomly show brand new or refurbished laptop for the user
-        const isRefurbished = Math.random() < 0.5;
-        userLaptop.src = isRefurbished ? "images/refurbishedlaptop.jpg" : "images/brandnewlaptop.jpg";
-        recycleBin.classList.remove("area-highlight-green");
-        factoryArea.classList.remove("area-highlight-green");
-        document.getElementById("outputArea").classList.remove("area-highlight-blue");
-        log.textContent = "Manufacturer used recycled metals and repaired components from the recycling / junk shop to build a brand new laptop and a refurbished backup laptop.";
-      }, 1500);
+      if (typeof onComplete === "function") {
+        onComplete();
+      }
     }, travelDuration);
   }
 </script>
