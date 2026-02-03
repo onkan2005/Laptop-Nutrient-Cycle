@@ -145,6 +145,10 @@
       transform: translateY(1px) scale(0.97);
       filter: drop-shadow(0 3px 8px rgba(15, 23, 42, 0.35));
     }
+    .output-laptop {
+      cursor: default;
+      filter: drop-shadow(0 4px 10px rgba(15, 23, 42, 0.25));
+    }
 
     /* Output laptops layout */
     #outputArea {
@@ -378,11 +382,11 @@
         <div class="output-grid">
           <div class="output-item">
             <div class="output-label">Brand New</div>
-            <img id="newLaptop" class="laptop" src="images/brandnewlaptop.jpg" alt="Brand New Laptop" draggable="true" style="display:none;">
+            <img id="newLaptop" class="output-laptop" src="images/brandnewlaptop.jpg" alt="Brand New Laptop" draggable="false" style="display:none;">
           </div>
           <div class="output-item">
             <div class="output-label">Refurbished</div>
-            <img id="refLaptop" class="laptop" src="images/refurbishedlaptop.jpg" alt="Refurbished Laptop" draggable="true" style="display:none;">
+            <img id="refLaptop" class="output-laptop" src="images/refurbishedlaptop.jpg" alt="Refurbished Laptop" draggable="false" style="display:none;">
           </div>
         </div>
       </div>
@@ -398,7 +402,7 @@
       <div class="area" style="top: 350px; left: 70px;" id="userArea">
         <h4>Users</h4>
         <div class="step-pill">5 · Everyday use</div>
-        <img id="userImg" src="images/brandnewlaptop.jpg" alt="People using laptops">
+        <img id="userLaptop" class="laptop" src="images/brandnewlaptop.jpg" alt="User Laptop" draggable="true" style="display:none; margin-top: 4px;">
       </div>
 
       <!-- Upper-left: Recycling / Junk Shop (sorting, repairing, dissolving) -->
@@ -438,6 +442,7 @@
   const recycleBin = document.getElementById("recycleBin");
   const newLaptop = document.getElementById("newLaptop");
   const refLaptop = document.getElementById("refLaptop");
+  const userLaptop = document.getElementById("userLaptop");
   const factoryArea = document.getElementById("factoryArea");
   const componentPairsDiv = document.getElementById("componentPairs");
   const promptBox = document.getElementById("promptBox");
@@ -461,21 +466,27 @@
     log.textContent = "Material collection complete. Raw minerals are ready for the manufacturer.";
   });
 
-  // Manufacturer → Brand New Laptop
+  // Manufacturer → Brand New Laptop (output) + user laptop (movable)
   factoryImg.addEventListener("click", () => {
     if (!miningDone) {
       log.textContent = "You must complete material collection first.";
       return;
     }
+    // Show brand-new laptop in the Laptop Output area
     newLaptop.style.display = "block";
-    log.textContent = "Manufacturer produced a brand new laptop. It moves through Stores to Users. When it breaks, drag it to the Recycling / Junk Shop or directly to the Residual Buyer.";
+    refLaptop.style.display = "none";
+
+    // Give the user their own movable laptop (randomly brand new or refurbished)
+    userLaptop.style.display = "block";
+    const isRefurbished = Math.random() < 0.5;
+    userLaptop.src = isRefurbished ? "images/refurbishedlaptop.jpg" : "images/brandnewlaptop.jpg";
+
+    log.textContent = `Manufacturer produced a brand new laptop. It appears in Laptop Output and one ${isRefurbished ? 'refurbished' : 'brand new'} laptop is taken by a user. When the user's laptop breaks, drag it to the Recycling / Junk Shop.`;
   });
 
-  // Drag start (same laptop image is used whether new or refurbished)
-  [newLaptop, refLaptop].forEach(laptop => {
-    laptop.addEventListener("dragstart", (e) => {
-      e.dataTransfer.setData("text/plain", "laptop");
-    });
+  // Drag start (the user's laptop is what moves)
+  userLaptop.addEventListener("dragstart", (e) => {
+    e.dataTransfer.setData("text/plain", "laptop");
   });
 
   // Allow drop (recycling / junk shop)
@@ -487,15 +498,23 @@
   recycleBin.addEventListener("drop", (e) => {
     e.preventDefault();
 
-    newLaptop.style.display = "none";
-    refLaptop.style.display = "none";
+    userLaptop.style.display = "none";
 
     log.textContent = "Laptop taken to a recycling / junk shop. Inside, workers separate, repair and dissolve components...";
     componentPairsDiv.innerHTML = "";
     promptBox.classList.add("hidden");
 
-    componentsList.forEach(component => {
-      const isBroken = Math.random() < 0.5;
+    // First pass: randomly assign broken/good status
+    const componentStatuses = componentsList.map(() => Math.random() < 0.5);
+    
+    // Ensure at least one broken component
+    if (!componentStatuses.some(status => status)) {
+      const randomIndex = Math.floor(Math.random() * componentStatuses.length);
+      componentStatuses[randomIndex] = true;
+    }
+
+    componentsList.forEach((component, index) => {
+      const isBroken = componentStatuses[index];
 
       const pairDiv = document.createElement("div");
       pairDiv.className = "component-pair";
@@ -589,6 +608,10 @@
       setTimeout(() => {
         newLaptop.style.display = "block";
         refLaptop.style.display = "block";
+        userLaptop.style.display = "block";
+        // Randomly show brand new or refurbished laptop for the user
+        const isRefurbished = Math.random() < 0.5;
+        userLaptop.src = isRefurbished ? "images/refurbishedlaptop.jpg" : "images/brandnewlaptop.jpg";
         recycleBin.classList.remove("area-highlight-green");
         factoryArea.classList.remove("area-highlight-green");
         document.getElementById("outputArea").classList.remove("area-highlight-blue");
